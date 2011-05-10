@@ -1,3 +1,8 @@
+
+#-----------------------------------------------------------------------------------------------------------#
+#-----------------------------------------  Rmagnets Session  ----------------------------------------------#
+#-----------------------------------------------------------------------------------------------------------#
+
 require 'rack/request'
 require 'rack/response'
 
@@ -8,7 +13,11 @@ require 'base64'
 require 'openssl'
 
 # encryption key is kept in persistence layer
-require_relative '../../../../../../rpersistence/lib/rpersistence.rb'
+require_relative '/Users/asher/Projects/rp/rpersistence/lib/rpersistence.rb'
+#require 'rpersistence'
+
+# rmagnets development
+require_relative '../../../../lib/rmagnets.rb'
 
 #######################
 #  Rmagnets::Session  #
@@ -71,15 +80,15 @@ class Rmagnets::Session
 
   # FIX - rpersistence must non-atomically persist any persist_by that is not declared atomic
   # this can be fixed in persist_by simply by checking if it is atomic and if it is not then setting it non-atomic
-  persist_declared_by   :encrypted_session_id
+  persists_declared_by  :encrypted_session_id
   attr_non_atomic       :session_id, :session_stack, :session_stack_hmac_digest, 
                         :encryption_key, :encryption_initialization_vector,
                         :domain, :path, :expire_after, :options
-  # FIX - implement attr_flat
+
   attr_flat             :session_stack, :options
   
   attr_reader           :options
-  attr_writer           :encrypted_session_id
+  attr_writer           :encrypted_session_id, :session_cookie
 
   ############################################## Constants ##################################################
 
@@ -92,9 +101,11 @@ class Rmagnets::Session
   
   DigestType                    = 'SHA1'.freeze
   
-  SessionIDBits                 = 32  
+  SessionIDBits                 = 128  
   SessionIDRandModifier         = "%0#{ SessionIDBits / 4 }x".freeze
   SessionIDRandLimit            = ( 2**SessionIDBits ).freeze
+	
+	CookieDelimiter								=	'--'
 
   ########################################### Initialization ################################################
 
@@ -111,8 +122,9 @@ class Rmagnets::Session
 
     @application                = application
     @options                    = options
-    @cipher                     = OpenSSL::Digest.new( DataCipher )
-    @iv_cipher                  = OpenSSL::Digest.new( InitializationVectorCipher )
+    @cipher                     = OpenSSL::Cipher.new( DataCipher )
+    @iv_cipher                  = OpenSSL::Cipher.new( InitializationVectorCipher )
+    @digest                     = OpenSSL::Digest::Digest.new( DigestType )
     @session_stack              = Array.new
 
   end
@@ -124,7 +136,7 @@ class Rmagnets::Session
   ################
   
   def session_id
-    
+		
     return @session_stack.last
 
   end
@@ -137,6 +149,18 @@ class Rmagnets::Session
     
     return options[ :domain ]
 
+  end
+
+  #############
+  #  domain=  #
+  #############
+
+  def domain=( domain )
+    
+    options[ :domain ] = domain
+
+		return self
+		
   end
 
   ##########
@@ -159,6 +183,18 @@ class Rmagnets::Session
 
   end
 
+  ##################
+  #  expire_after  #
+  ##################
+
+  def expire_after=( duration )
+    
+    options[ :expire_after ] = duration
+
+		return self
+
+  end
+
   ########################
   #  push_session_frame  #
   ########################
@@ -167,15 +203,21 @@ class Rmagnets::Session
   def push_session_frame
 
     # cease persisting with old frame ID
-    cease! if persistence_id
+    cease!( Rmagnets::Configuration::SessionStoragePort, persistence_bucket, persistence_key ) if persistence_id
 
-    # reset digest since our stack has changed
-    @session_stack_hmac_digest = nil
-
-    @session_stack.push( new_session_frame )
+    # reset digest and cookie since our stack has changed
+		reset_session_stack_hmac_digest
+		reset_session_cookie
+		
+		new_session_id = nil
+    # make sure we don't have a collision for our new session id
+    # if we do have a collision, recurse until we can return valid ID
+		while self.class.persisted?( Rmagnets::Configuration::SessionStoragePort, persistence_bucket, encrypt_session_id( new_session_id = new_session_frame ) ) ;; end
+    
+    @session_stack.push( new_session_id )
 
     # persist with new frame ID
-    persist!( Rmagnets.session_storage_port, persistence_bucket, persistence_key )
+    persist!( Rmagnets::Configuration::SessionStoragePort, persistence_bucket, persistence_key )
 
     return self
 
@@ -189,16 +231,21 @@ class Rmagnets::Session
   def pop_session_frame
         
     # cease persisting by popped frame ID
-    cease! if persistence_id
+    cease!( Rmagnets::Configuration::SessionStoragePort, persistence_bucket, persistence_key ) if persistence_id
 
     # reset digest since our stack has changed
-    @session_stack_hmac_digest = nil
+		reset_session_stack_hmac_digest
+		reset_session_cookie
 
     popped_frame = @session_stack.pop
-    
-    # persist with current ID if we still have one
-    persist!( Rmagnets.session_storage_port, persistence_bucket, persistence_key ) unless @session_stack.empty?
 
+		if @session_stack.empty?
+    	reset_persistence_id_to( nil )
+		else
+			# persist with current ID if we still have one
+	    persist!( Rmagnets::Configuration::SessionStoragePort, persistence_bucket, persistence_key )
+		end
+		
     return popped_frame
 
   end
@@ -223,9 +270,12 @@ class Rmagnets::Session
   def reset_session_stack
 
     # remove existing reference in persistence
-    cease! if persistence_id
+    cease!( Rmagnets::Configuration::SessionStoragePort, persistence_bucket, persistence_key ) if persistence_id
+
+  	reset_persistence_id_to( nil )
 
     @session_stack = Array.new
+
     push_session_frame
 
   end
