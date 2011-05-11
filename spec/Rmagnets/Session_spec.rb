@@ -1,5 +1,9 @@
 require_relative '../../lib/rmagnets-session.rb'
 
+# rmagnets development
+require_relative '../../../lib/rmagnets.rb'
+
+require_relative '../../lib/rmagnets-session/Rmagnets/Session.rb'
 require_relative 'Session_rack.rb'
 require_relative 'Rmagnets_config.rb'
 
