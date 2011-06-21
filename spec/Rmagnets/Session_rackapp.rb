@@ -10,8 +10,8 @@ $__rmagnets__spec__session_id_rack_application = lambda do |environment|
   $__rmagnets__spec__body_text   = 'Session ID: ' + environment[ Rmagnets::Session::SessionKey ].session_id.to_s
 
 	# generate and return header, body, status
-  Rack::Response.new(	$__rmagnets__spec__body_text, 
-											request.GET[ 'status' ] || 200, 
-											'Content-Type' => 'text/html' ).finish
+  return Rack::Response.new(	$__rmagnets__spec__body_text, 
+															request.GET[ 'status' ] || 200, 
+															'Content-Type' => 'text/html' ).finish
 
 end

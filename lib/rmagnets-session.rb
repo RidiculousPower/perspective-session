@@ -10,10 +10,10 @@ require 'openssl'
 # encryption key is kept in persistence layer
 require 'rpersistence'
 
-module Rmagnets
+class Rmagnets
   class Session
   end
 end
 
 require_relative 'rmagnets-session/Rmagnets/Session.rb'
-require_relative 'rmagnets-session/Rmagnets/Private/Session.rb'
+require_relative 'rmagnets-session/Rmagnets/_private_/Session.rb'
