@@ -8,12 +8,13 @@ require 'base64'
 require 'openssl'
 
 # encryption key is kept in persistence layer
-require 'rpersistence'
+require 'persistence'
 
-class Rmagnets
+require_relative '../../lib/rmagnets.rb'
+
+module Rmagnets
   class Session
   end
 end
 
 require_relative 'rmagnets-session/Rmagnets/Session.rb'
-require_relative 'rmagnets-session/Rmagnets/_private_/Session.rb'
