@@ -1,17 +1,9 @@
 
-#--------------------------------------------------------------------------------------------------#
-#------------------------------------  Rmagnets Session  ------------------------------------------#
-#--------------------------------------------------------------------------------------------------#
+class ::Magnets::Session
 
-#######################
-#  Rmagnets::Session  #
-#######################
-
-class ::Rmagnets::Session
-
-       #---------------------#
-  #####|  Rmagnets::Session  |######################################################################
-  #    #---------------------#                                                                     #
+       #----------------------#
+  #####|  ::Magnets::Session  |#####################################################################
+  #    #----------------------#                                                                    #
   #                                                                                                #
   #  The purpose of the session is to sustain state between requests.                              #
   #  State is stored in a storage port because the session is a bad location to store state.       #
@@ -62,7 +54,7 @@ class ::Rmagnets::Session
 
   ######################################## Persistence #############################################
   
-  include Persistence
+  include ::Persistence
   
   attr_non_atomic_accessor  :session_id, :session_stack, :session_stack_hmac_digest, 
                             :encryption_key, :encryption_initialization_vector,
@@ -75,11 +67,9 @@ class ::Rmagnets::Session
   attr_reader               :options
   attr_writer               :encrypted_session_id, :session_cookie
                             
-  self.instance_persistence_port = ::Rmagnets::Configuration.session_storage_port
-
   ######################################### Constants ##############################################
 
-  SessionKey                     = 'rmagnets.session'.freeze
+  SessionKey                     = 'magnets.session'.freeze
   
   # cipher values and digest type taken from Phusion's encrypted cookie store
   # https://github.com/FooBarWidget/encrypted_cookie_store
@@ -93,6 +83,18 @@ class ::Rmagnets::Session
   SessionIDRandLimit            = ( 2**SessionIDBits ).freeze
 	
 	CookieDelimiter								=	'--'
+
+  ####################################### Persistence ##############################################
+
+  ###############################
+  #  instance_persistence_port  #
+  ###############################
+
+  def self.instance_persistence_port
+    
+    return ::Magnets::Configuration.session.storage_port
+    
+  end
 
   ###################################### Initialization ############################################
 
@@ -285,7 +287,7 @@ class ::Rmagnets::Session
   #  call  #
   ##########
 
-  # Rack::Sesssion compatibility:
+  # ::Rack::Sesssion compatibility:
   # * responds to #call( environment )
   # * returns [ status, headers, body ]
   def call( environment )
@@ -344,7 +346,7 @@ class ::Rmagnets::Session
     cookie[ :value ]    = session_cookie
     cookie[ :expires ]  = Time.now + expire_after if expire_after
 
-    Rack::Utils.set_cookie_header!( headers, SessionKey, cookie.merge( @options ) )
+    ::Rack::Utils.set_cookie_header!( headers, SessionKey, cookie.merge( @options ) )
 
     return true
     
@@ -564,7 +566,7 @@ class ::Rmagnets::Session
 		session_cookie_exists_in_environment_and_verifies	=	false
 
     # we have a session id if we have a stored cookie by our session key
-    stored_session_cookie = Rack::Request.new( environment ).cookies[ SessionKey ]
+    stored_session_cookie = ::Rack::Request.new( environment ).cookies[ SessionKey ]
 
 		# if we have a stored cookie
 		if 	stored_session_cookie
