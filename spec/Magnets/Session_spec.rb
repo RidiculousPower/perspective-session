@@ -1,21 +1,33 @@
 
-require 'persistence-adapter-mock'
-require 'rack'
-$__magnets__spec__development_ = true
-if $__magnets__spec__development_
-  require_relative '../../lib/magnets-session.rb'
-  require_relative '../../../lib/magnets.rb'
-else
-  require 'magnets-session'
-  require 'magnets'
-end
+require 'persistence/adapter/mock'
 
-require_relative 'Session_rackapp.rb'
+require 'rack'
+
+require 'magnets/session'
 
 describe ::Magnets::Session do
 
   before :all do
+    
     Persistence.enable_port( :mock, Persistence::Adapter::Mock.new )
+
+    # simple rack adaptor app that returns a page with description of session ID as its body
+    # this should let us test whether a session ID has been created and can be retrieved
+    @__magnets__spec__session_id_rack_application = lambda do |environment|
+
+    	# get request from environment 
+    	request = ::Rack::Request.new( environment )
+
+    	# create body text, store in global so we can compare result
+      $__magnets__spec__body_text   = 'Session ID: ' + environment[ ::Magnets::Session::SessionKey ].session_id.to_s
+
+    	# generate and return header, body, status
+      return ::Rack::Response.new(	$__magnets__spec__body_text, 
+    															  request.GET[ 'status' ] || 200, 
+    															  'Content-Type' => 'text/html' ).finish
+
+    end
+
   end
   
   after :all do
@@ -29,7 +41,7 @@ describe ::Magnets::Session do
   #######################
   
   it "can create a new session frame" do
-    session = ::Magnets::Session.new( $__magnets__spec__session_id_rack_application )
+    session = ::Magnets::Session.new( @__magnets__spec__session_id_rack_application )
     session.instance_eval do
       new_session_frame.to_s.length.should == 32
     end
@@ -40,7 +52,7 @@ describe ::Magnets::Session do
   ##########################
 
   it "can return an encrypted version of the session ID" do
-    session = ::Magnets::Session.new( $__magnets__spec__session_id_rack_application )
+    session = ::Magnets::Session.new( @__magnets__spec__session_id_rack_application )
     session.instance_eval do
       session_stack = instance_variable_get( :@session_stack )
       session_stack.push( new_session_frame )
@@ -53,7 +65,7 @@ describe ::Magnets::Session do
   ########################
 
   it "can encrypt a session ID" do
-    session = ::Magnets::Session.new( $__magnets__spec__session_id_rack_application )
+    session = ::Magnets::Session.new( @__magnets__spec__session_id_rack_application )
     session.instance_eval do
       session_stack = instance_variable_get( :@session_stack )
       session_stack.push( new_session_frame )
@@ -68,7 +80,7 @@ describe ::Magnets::Session do
   ###############################
   
   it "can return an hmac digest of the session stack" do
-    session = ::Magnets::Session.new( $__magnets__spec__session_id_rack_application )
+    session = ::Magnets::Session.new( @__magnets__spec__session_id_rack_application )
     session.instance_eval do
       session_stack = instance_variable_get( :@session_stack )
       session_stack.push( new_session_frame )
@@ -81,7 +93,7 @@ describe ::Magnets::Session do
   ####################
 
   it "can return the current session information in cookie form" do
-    session = ::Magnets::Session.new( $__magnets__spec__session_id_rack_application )
+    session = ::Magnets::Session.new( @__magnets__spec__session_id_rack_application )
     session.instance_eval do
       session_stack = instance_variable_get( :@session_stack )
       session_stack.push( new_session_frame )
@@ -94,7 +106,7 @@ describe ::Magnets::Session do
   ####################
 
   it "has an encryption key" do
-    session = ::Magnets::Session.new( $__magnets__spec__session_id_rack_application )
+    session = ::Magnets::Session.new( @__magnets__spec__session_id_rack_application )
     session.instance_eval do
       encryption_key.should_not == nil
     end    
@@ -105,7 +117,7 @@ describe ::Magnets::Session do
   ######################################
 
   it "has an initialization vector" do
-    session = ::Magnets::Session.new( $__magnets__spec__session_id_rack_application )
+    session = ::Magnets::Session.new( @__magnets__spec__session_id_rack_application )
     session.instance_eval do
       encryption_initialization_vector.should_not == nil
     end    
@@ -116,7 +128,7 @@ describe ::Magnets::Session do
   ###################################
 
   it "can verify the encrypted session ID" do
-    session = ::Magnets::Session.new( $__magnets__spec__session_id_rack_application )
+    session = ::Magnets::Session.new( @__magnets__spec__session_id_rack_application )
     session.instance_eval do
       session_stack = instance_variable_get( :@session_stack )
       session_stack.push( new_session_frame )
@@ -133,7 +145,7 @@ describe ::Magnets::Session do
   it "is intended to function as Rack middleware" do
     
     # create a session instance that uses our spec app
-    session = ::Magnets::Session.new( $__magnets__spec__session_id_rack_application )
+    session = ::Magnets::Session.new( @__magnets__spec__session_id_rack_application )
     # get a mock result from our session app
     first_result = ::Rack::MockRequest.new( session ).get( 'http://somedomain.com/path/to/somewhere' )
     # verify cookie results from request
@@ -187,7 +199,7 @@ describe ::Magnets::Session do
   ################
 
   it "can be created with an application and standard session options" do
-    session = ::Magnets::Session.new( $__magnets__spec__session_id_rack_application )
+    session = ::Magnets::Session.new( @__magnets__spec__session_id_rack_application )
     session.should_not == nil
   end
 
@@ -196,7 +208,7 @@ describe ::Magnets::Session do
   ############
 
   it "can report the domain this session stack covers" do
-    session = ::Magnets::Session.new( $__magnets__spec__session_id_rack_application )
+    session = ::Magnets::Session.new( @__magnets__spec__session_id_rack_application )
     session.domain.should == nil
     session.domain = 'somedomain.com'
     session.domain.should == 'somedomain.com'
@@ -207,7 +219,7 @@ describe ::Magnets::Session do
   ##########
 
   it "can report the path this session stack covers" do
-    session = ::Magnets::Session.new( $__magnets__spec__session_id_rack_application )
+    session = ::Magnets::Session.new( @__magnets__spec__session_id_rack_application )
     session.path.should == '/'
   end
 
@@ -216,7 +228,7 @@ describe ::Magnets::Session do
   ##################
 
   it "can report the duration before this cookie expires" do
-    session = ::Magnets::Session.new( $__magnets__spec__session_id_rack_application )
+    session = ::Magnets::Session.new( @__magnets__spec__session_id_rack_application )
     session.expire_after.should == nil
     session.expire_after = 420
     session.expire_after.should == 420
@@ -231,7 +243,7 @@ describe ::Magnets::Session do
   ###########################
   
   it "can report the session ID, push and pop session frames, and reset the current session or session stack" do
-    session = ::Magnets::Session.new( $__magnets__spec__session_id_rack_application )
+    session = ::Magnets::Session.new( @__magnets__spec__session_id_rack_application )
     session.session_id.should == nil
     # first session id
     session.push_session_frame

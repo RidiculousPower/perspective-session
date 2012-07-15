@@ -1,4 +1,17 @@
 
+begin ; require 'development' ; rescue ::LoadError ; end
+
+require 'magnets/configuration'
+
+# namespaces that have to be declared ahead of time for proper load order
+require_relative './namespaces'
+
+# source file requires
+require_relative './requires.rb'
+
+# post-require setup
+require_relative './setup.rb'
+
 class ::Magnets::Session
 
        #----------------------#
@@ -109,12 +122,12 @@ class ::Magnets::Session
   # * :expire_after
   def initialize( application, options = {} )
 
-    @application                = application
-    @options                    = options
-    @cipher                     = OpenSSL::Cipher.new( DataCipher )
-    @iv_cipher                  = OpenSSL::Cipher.new( InitializationVectorCipher )
-    @digest                     = OpenSSL::Digest::Digest.new( DigestType )
-    @session_stack              = [ ]
+    @application    = application
+    @options        = options
+    @cipher         = OpenSSL::Cipher.new( DataCipher )
+    @iv_cipher      = OpenSSL::Cipher.new( InitializationVectorCipher )
+    @digest         = OpenSSL::Digest::Digest.new( DigestType )
+    @session_stack  = [ ]
 
   end
 
@@ -275,7 +288,7 @@ class ::Magnets::Session
     
   	self.persistence_id = nil
 
-    @session_stack = [ ]
+    @session_stack.clear
 
     push_session_frame
 
@@ -581,7 +594,7 @@ class ::Magnets::Session
 
 			# and we can persist the rest of our configuration using the encrypted ID from the cookie
     	if persist
-			
+
 				# and we can verify the cookie combination of encrypted current session ID 
 				# and session stack hmac digest
 				if encrypted_session_id_verifies( stored_encrypted_session_id, 
