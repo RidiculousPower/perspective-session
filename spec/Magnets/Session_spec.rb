@@ -1,5 +1,5 @@
 
-require 'persistence/adapter/mock'
+require 'persistence'
 
 require 'rack'
 
