@@ -1,7 +1,7 @@
 
 begin ; require 'development' ; rescue ::LoadError ; end
 
-require 'magnets/configuration'
+require 'perspective/configuration'
 
 # namespaces that have to be declared ahead of time for proper load order
 require_relative './namespaces'
@@ -12,10 +12,10 @@ require_relative './requires.rb'
 # post-require setup
 require_relative './setup.rb'
 
-class ::Magnets::Session
+class ::Perspective::Session
 
        #----------------------#
-  #####|  ::Magnets::Session  |#####################################################################
+  #####|  ::Perspective::Session  |#####################################################################
   #    #----------------------#                                                                    #
   #                                                                                                #
   #  The purpose of the session is to sustain state between requests.                              #
@@ -82,7 +82,7 @@ class ::Magnets::Session
                             
   ######################################### Constants ##############################################
 
-  SessionKey                     = 'magnets.session'.freeze
+  SessionKey                     = 'perspective.session'.freeze
   
   # cipher values and digest type taken from Phusion's encrypted cookie store
   # https://github.com/FooBarWidget/encrypted_cookie_store
@@ -105,7 +105,7 @@ class ::Magnets::Session
 
   def self.instance_persistence_port
     
-    return ::Magnets::Configuration.session.storage_port
+    return ::Perspective::Configuration.session.storage_port
     
   end
 

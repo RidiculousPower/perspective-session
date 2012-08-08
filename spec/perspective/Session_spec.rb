@@ -3,9 +3,9 @@ require 'persistence'
 
 require 'rack'
 
-require 'magnets/session'
+require 'perspective/session'
 
-describe ::Magnets::Session do
+describe ::Perspective::Session do
 
   before :all do
     
@@ -13,16 +13,16 @@ describe ::Magnets::Session do
 
     # simple rack adaptor app that returns a page with description of session ID as its body
     # this should let us test whether a session ID has been created and can be retrieved
-    @__magnets__spec__session_id_rack_application = lambda do |environment|
+    @__perspective__spec__session_id_rack_application = lambda do |environment|
 
     	# get request from environment 
     	request = ::Rack::Request.new( environment )
 
     	# create body text, store in global so we can compare result
-      $__magnets__spec__body_text   = 'Session ID: ' + environment[ ::Magnets::Session::SessionKey ].session_id.to_s
+      $__perspective__spec__body_text   = 'Session ID: ' + environment[ ::Perspective::Session::SessionKey ].session_id.to_s
 
     	# generate and return header, body, status
-      return ::Rack::Response.new(	$__magnets__spec__body_text, 
+      return ::Rack::Response.new(	$__perspective__spec__body_text, 
     															  request.GET[ 'status' ] || 200, 
     															  'Content-Type' => 'text/html' ).finish
 
@@ -41,7 +41,7 @@ describe ::Magnets::Session do
   #######################
   
   it "can create a new session frame" do
-    session = ::Magnets::Session.new( @__magnets__spec__session_id_rack_application )
+    session = ::Perspective::Session.new( @__perspective__spec__session_id_rack_application )
     session.instance_eval do
       new_session_frame.to_s.length.should == 32
     end
@@ -52,7 +52,7 @@ describe ::Magnets::Session do
   ##########################
 
   it "can return an encrypted version of the session ID" do
-    session = ::Magnets::Session.new( @__magnets__spec__session_id_rack_application )
+    session = ::Perspective::Session.new( @__perspective__spec__session_id_rack_application )
     session.instance_eval do
       session_stack = instance_variable_get( :@session_stack )
       session_stack.push( new_session_frame )
@@ -65,7 +65,7 @@ describe ::Magnets::Session do
   ########################
 
   it "can encrypt a session ID" do
-    session = ::Magnets::Session.new( @__magnets__spec__session_id_rack_application )
+    session = ::Perspective::Session.new( @__perspective__spec__session_id_rack_application )
     session.instance_eval do
       session_stack = instance_variable_get( :@session_stack )
       session_stack.push( new_session_frame )
@@ -80,7 +80,7 @@ describe ::Magnets::Session do
   ###############################
   
   it "can return an hmac digest of the session stack" do
-    session = ::Magnets::Session.new( @__magnets__spec__session_id_rack_application )
+    session = ::Perspective::Session.new( @__perspective__spec__session_id_rack_application )
     session.instance_eval do
       session_stack = instance_variable_get( :@session_stack )
       session_stack.push( new_session_frame )
@@ -93,7 +93,7 @@ describe ::Magnets::Session do
   ####################
 
   it "can return the current session information in cookie form" do
-    session = ::Magnets::Session.new( @__magnets__spec__session_id_rack_application )
+    session = ::Perspective::Session.new( @__perspective__spec__session_id_rack_application )
     session.instance_eval do
       session_stack = instance_variable_get( :@session_stack )
       session_stack.push( new_session_frame )
@@ -106,7 +106,7 @@ describe ::Magnets::Session do
   ####################
 
   it "has an encryption key" do
-    session = ::Magnets::Session.new( @__magnets__spec__session_id_rack_application )
+    session = ::Perspective::Session.new( @__perspective__spec__session_id_rack_application )
     session.instance_eval do
       encryption_key.should_not == nil
     end    
@@ -117,7 +117,7 @@ describe ::Magnets::Session do
   ######################################
 
   it "has an initialization vector" do
-    session = ::Magnets::Session.new( @__magnets__spec__session_id_rack_application )
+    session = ::Perspective::Session.new( @__perspective__spec__session_id_rack_application )
     session.instance_eval do
       encryption_initialization_vector.should_not == nil
     end    
@@ -128,7 +128,7 @@ describe ::Magnets::Session do
   ###################################
 
   it "can verify the encrypted session ID" do
-    session = ::Magnets::Session.new( @__magnets__spec__session_id_rack_application )
+    session = ::Perspective::Session.new( @__perspective__spec__session_id_rack_application )
     session.instance_eval do
       session_stack = instance_variable_get( :@session_stack )
       session_stack.push( new_session_frame )
@@ -145,11 +145,11 @@ describe ::Magnets::Session do
   it "is intended to function as Rack middleware" do
     
     # create a session instance that uses our spec app
-    session = ::Magnets::Session.new( @__magnets__spec__session_id_rack_application )
+    session = ::Perspective::Session.new( @__perspective__spec__session_id_rack_application )
     # get a mock result from our session app
     first_result = ::Rack::MockRequest.new( session ).get( 'http://somedomain.com/path/to/somewhere' )
     # verify cookie results from request
-    first_result[ 'Set-Cookie' ].slice( 0, ::Magnets::Session::SessionKey.length ).should == ::Magnets::Session::SessionKey
+    first_result[ 'Set-Cookie' ].slice( 0, ::Perspective::Session::SessionKey.length ).should == ::Perspective::Session::SessionKey
     # ensure that resulting cookie decrypts and verifies
     first_decrypted_id = verify_session_cookie( session, first_result )
     
@@ -176,7 +176,7 @@ describe ::Magnets::Session do
       # * second, unescape any encoded text
       unescaped_cookie_session_cookie = ::Rack::Utils.unescape( cookie_session_cookie )
       # split the cookie into its two parts we need to test
-      cookie_base64_encoded_encrypted_session_id, cookie_session_stack_hmac_digest = unescaped_cookie_session_cookie.split( ::Magnets::Session::CookieDelimiter )
+      cookie_base64_encoded_encrypted_session_id, cookie_session_stack_hmac_digest = unescaped_cookie_session_cookie.split( ::Perspective::Session::CookieDelimiter )
       # verify base64 encoded first part (base 64 encoded encrypted session)
       cookie_base64_encoded_encrypted_session_id.should == base64_encoded_and_encrypted_session_id
       # base64 decode the first part (the encrypted session)
@@ -199,7 +199,7 @@ describe ::Magnets::Session do
   ################
 
   it "can be created with an application and standard session options" do
-    session = ::Magnets::Session.new( @__magnets__spec__session_id_rack_application )
+    session = ::Perspective::Session.new( @__perspective__spec__session_id_rack_application )
     session.should_not == nil
   end
 
@@ -208,7 +208,7 @@ describe ::Magnets::Session do
   ############
 
   it "can report the domain this session stack covers" do
-    session = ::Magnets::Session.new( @__magnets__spec__session_id_rack_application )
+    session = ::Perspective::Session.new( @__perspective__spec__session_id_rack_application )
     session.domain.should == nil
     session.domain = 'somedomain.com'
     session.domain.should == 'somedomain.com'
@@ -219,7 +219,7 @@ describe ::Magnets::Session do
   ##########
 
   it "can report the path this session stack covers" do
-    session = ::Magnets::Session.new( @__magnets__spec__session_id_rack_application )
+    session = ::Perspective::Session.new( @__perspective__spec__session_id_rack_application )
     session.path.should == '/'
   end
 
@@ -228,7 +228,7 @@ describe ::Magnets::Session do
   ##################
 
   it "can report the duration before this cookie expires" do
-    session = ::Magnets::Session.new( @__magnets__spec__session_id_rack_application )
+    session = ::Perspective::Session.new( @__perspective__spec__session_id_rack_application )
     session.expire_after.should == nil
     session.expire_after = 420
     session.expire_after.should == 420
@@ -243,7 +243,7 @@ describe ::Magnets::Session do
   ###########################
   
   it "can report the session ID, push and pop session frames, and reset the current session or session stack" do
-    session = ::Magnets::Session.new( @__magnets__spec__session_id_rack_application )
+    session = ::Perspective::Session.new( @__perspective__spec__session_id_rack_application )
     session.session_id.should == nil
     # first session id
     session.push_session_frame

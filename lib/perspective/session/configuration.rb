@@ -1,5 +1,5 @@
 
-module ::Magnets::Session::Configuration
+module ::Perspective::Session::Configuration
 
 	##################
 	#  storage_port  #

@@ -1,5 +1,5 @@
 
-module ::Magnets
+module ::Perspective
   class Session
     module Configuration
     end
